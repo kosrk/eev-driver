@@ -1,4 +1,3 @@
-#include <Arduino.h>
 #include <driver.h>
 
 // ПРОВЕРИТЬ НАПРАВЛЕНИЕ ВРАЩЕНИЯ ЗАКРЫТИЯ НА ДРАЙВЕРЕ!
@@ -36,13 +35,13 @@
 #define DIR_PIN              2            // D2 DIR pin драйвера
 #define BUSY_PIN             LED_BUILTIN  // встроенный светодиод для тестов
 #define VELOCITY             240          // скорость в полных шагах в секунду
-#define MICROSTEPS           128          // делитель микрошага, установленный на драйвере
+#define MICROSTEPS           32           // делитель микрошага, установленный на драйвере
 #define TOTAL_STEPS          600          // полное рабочее число шагов БЕЗ учета микрошага
 #define OVERDRIVE_STEPS      6            // запас полных шагов перегрузки
 #define INIT_OVERDRIVE_STEPS 28           // запас полных шагов перегрузки для первичной инициализации
-#define HIGH_TIME            5            // длительность состояния HIGH для STEP pin в миллисекундах
-#define MAX_POSITION         1000         // Положение задвижки задатеся числом 0-X, где 0 - полностью закрыто, X - полностью открыто
-#define HOLDING_TIME         10           // Время (в мс) до отключения питания обмоток после последнего шага
+#define HIGH_TIME            5            // длительность состояния HIGH для STEP pin в микросекундах
+#define MAX_REL_POSITION     1000         // Положение задвижки задатеся числом 0-X, где 0 - полностью закрыто, X - полностью открыто
+#define HOLDING_TIME         10           // Время (в миллисекундах) до отключения питания обмоток после последнего шага
 #define DEBUG                true         // вывод отладочной информации в консоль
 
 void debugLog(String msg) {
@@ -62,17 +61,23 @@ void setup()
       DIR_PIN,
       BUSY_PIN,
       VELOCITY,
+      MICROSTEPS,
       TOTAL_STEPS,
-      MICROSTEP,
-      OVERLOAD_RATE,
-      MAX_POSITION
+      OVERDRIVE_STEPS,
+      INIT_OVERDRIVE_STEPS,
+      HIGH_TIME,
+      MAX_REL_POSITION,
+      HOLDING_TIME
       };
+  if (!ValidateConfig(config)) {
+    debugLog("Invalid config");
+    return;
+  };
   Driver driver(config);
-  driver.init();
-  driver.initialOverload();
+  driver.Init();
+  driver.InitialOverdrive();
   debugLog("Driver initialization");
 }
 
 void loop() {
 }
-

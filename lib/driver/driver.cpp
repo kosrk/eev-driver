@@ -1,102 +1,123 @@
-struct driverConfig{
-  int enablePin,
-  stepPin,
-  dirPin,
-  busyPin,
-  velocity,
-  microsteps, 
-  totalSteps,
-  overdriveSteps,
-  initOverdriveSteps,
-  highTime,
-  maxPosition,
-  holdingTime;
+#include "driver.h"
+
+// Валидация данных конфигурации
+//----------------------------------------
+bool ValidateConfig(driverConfig dConfig) {
+  if (dConfig.velocity < 1) return false;
+  if (dConfig.microsteps < 1) return false; 
+  if (dConfig.totalSteps < 1) return false;
+  if (dConfig.overdriveSteps < 1) return false;
+  if (dConfig.initOverdriveSteps < 1) return false;
+  if (dConfig.highTime < 1) return false;
+  if (dConfig.maxRelPosition < 10) return false;
+  if (dConfig.holdingTime < 0) return false;
+  return true;
+}
+
+// Конструктор класса
+//----------------------------------------
+Driver::Driver(driverConfig dConfig) {
+  config = dConfig;
+  currentAbsPosition = 0;
+  busy = false;
+  ready = false;
+  enabled = false;
+  // Вычисление паузы между импульсами Step
+  stepTimeout = 1000000 / (config.velocity * config.microsteps) - config.highTime;
+  if (stepTimeout < 10) stepTimeout = 10;
+}
+
+// Инициализация
+//----------------------------------------
+bool Driver::Init() {
+  pinMode(config.enablePin, OUTPUT);
+  pinMode(config.stepPin, OUTPUT);
+  pinMode(config.dirPin, OUTPUT);
+  pinMode(config.busyPin, OUTPUT);
+  return true;
+}
+
+// Подать питание на мотор
+//----------------------------------------
+bool Driver::Enable() {
+  digitalWrite(config.enablePin, HIGH);
+  enabled = true;
+  return true;
+}
+    
+// Отключить питание мотора
+//----------------------------------------
+bool Driver::Disable() {
+  digitalWrite(config.enablePin, LOW);
+  enabled = false;
+  return true;
 };
 
-class Driver{
-  public:
-    // Конструктор класса
-    Driver (driverConfig config){
-      config = driverConfig;
-      absPosition = 0;
-      busy = false;
-      ready = false;
-      enabled = false;
-      stepTimeout = ceil(1 / (velocity * microstep)) - highTime;
-      if (stepTimeout < 5) stepTimeout = 5;
-    }
-    // Инициализация
-    void init() {
-        pinMode(enablePin, OUTPUT);
-        pinMode(stepPin, OUTPUT);
-        pinMode(dirPin, OUTPUT);
-        pinMode(busyPin, OUTPUT);
-    }
-    // Подать питание на мотор
-    bool enable() {
-      digitalWrite(enablePin, HIGH);
-      enabled = true;
-      return true;
-    };
-    // Отключить питание мотора
-    bool disable() {
-      digitalWrite(enablePin, LOW);
-      enabled = false;
-      return true;
-    };
-    // Выполнить перегрузку при неизвестном положении. Сбросить положение на 0.
-    // Положительное направление вращения - в сторону открытия клапана.
-    bool initialOverload() {
-      if (!enabled) {
-        return true;
-      };
-      int overloadSteps = ceil(totalSteps*microstep*(100.0+overload)/100);
-      makeSteps(overloadSteps, true);
-      absPosition = 0;
-      ready = true;
-      return true;
-    };
-  private:
-    driverConfig config;
-    int enablePin, stepPin, dirPin, busyPin;
-    int absPosition, velocity, totalSteps, microstep, overload, stepTimeout, highTime, maxPosition;
-    bool busy, ready, enabled;
-    // Перейти в состояние "занят" 
-    void setBusy() {
-      busy = true;
-      digitalWrite(busyPin, HIGH);
-    };
-    // Перейти в состояние "свободен"
-    void setNotBusy() {
-      busy = false;
-      digitalWrite(busyPin, LOW);
-    };
-    // Пересчет относительной позиции в абсолютную
-    int convertRelPosition(int relPosition) {
-      int absPos = ceil(1.0*relPosition/maxPosition)*totalSteps*microstep;
-    };
-    // Вычислить число шагов
-    int calculateSteps(int targetRelPosition) {
-      // TODO
-      int mul = 0;
-      return 0;
-    };
-    // Выполнить шаги
-    bool makeSteps(int steps, bool reverse) {
-      setBusy();
-      if (reverse) {
-        digitalWrite(dirPin, HIGH);
-      }
-      for (int i = 0; i < steps; i++) {
-        digitalWrite(stepPin, HIGH);
-        delay(highTime);
-        digitalWrite(stepPin, LOW);
-        delay(stepTimeout);
-      };
-      if (reverse) {
-        digitalWrite(dirPin, LOW);
-      }
-      setNotBusy();
-      return true;
-    };
+// Перейти в состояние "занят" 
+//----------------------------------------
+bool Driver::setBusy() {
+  busy = true;
+  digitalWrite(config.busyPin, HIGH);
+  return true;
+};
+
+// Перейти в состояние "свободен"
+//----------------------------------------
+bool Driver::setNotBusy() {
+  busy = false;
+  digitalWrite(config.busyPin, LOW);
+  return true;
+};
+
+// Пересчет относительной позиции в абсолютную
+//----------------------------------------
+bool Driver::convertRelPositionToAbs(int relPosition, int *absPosition) {
+  if (relPosition > config.maxRelPosition) return false;
+  int res = (relPosition * config.totalSteps * config.microsteps) / config.maxRelPosition;
+  *absPosition = res;
+  return true;
+};
+
+// Вычислить число шагов до относительной позиции
+//----------------------------------------
+bool Driver::calcStepsToRelPosition(int targetRelPosition, int *qtyOfSteps) {
+  int targetAbsPosition;
+  if (!convertRelPositionToAbs(targetRelPosition, &targetAbsPosition)) return false;
+  int steps = targetAbsPosition - currentAbsPosition;
+  *qtyOfSteps = steps;
+  return true;
+};
+
+// Выполнить шаги
+//----------------------------------------
+bool Driver::makeSteps(int steps) {
+  if (busy || !enabled) return false;
+  setBusy();
+  if (steps < 0) {
+    digitalWrite(config.dirPin, HIGH);
+  }
+  for (int i = 0; i < abs(steps); i++) {
+    digitalWrite(config.stepPin, HIGH);
+    delayMicroseconds(config.highTime);
+    digitalWrite(config.stepPin, LOW);
+    delayMicroseconds(stepTimeout);
+  };
+  if (steps < 0) {
+    digitalWrite(config.dirPin, LOW);
+  }
+  setNotBusy();
+  return true;
+};
+
+// Выполнить перегрузку при неизвестном положении. Сбросить положение на 0.
+// Положительное направление вращения - в сторону открытия клапана.
+//----------------------------------------
+bool Driver::InitialOverdrive() {
+  if (!enabled) Enable();
+  int overloadSteps = -1 * (config.totalSteps + config.initOverdriveSteps) * config.microsteps; 
+  makeSteps(overloadSteps);
+  currentAbsPosition = 0;
+  ready = true;
+  Disable();
+  return true;
 };
