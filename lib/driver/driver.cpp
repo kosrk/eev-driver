@@ -114,10 +114,39 @@ bool Driver::makeSteps(int steps) {
 //----------------------------------------
 bool Driver::InitialOverdrive() {
   if (!enabled) Enable();
-  int overloadSteps = -1 * (config.totalSteps + config.initOverdriveSteps) * config.microsteps; 
-  makeSteps(overloadSteps);
+  int overdriveSteps = -1 * (config.totalSteps + config.initOverdriveSteps) * config.microsteps; 
+  makeSteps(overdriveSteps);
   currentAbsPosition = 0;
+  delay(config.holdingTime);
+  Disable();
   ready = true;
+  return true;
+};
+
+// Выполнить перегрузку при известном положении. Сбросить положение на 0.
+// Положительное направление вращения - в сторону открытия клапана.
+//----------------------------------------
+bool Driver::Overdrive() {
+  if (!enabled) Enable();
+  int overdriveSteps;
+  calcStepsToRelPosition(0, &overdriveSteps);
+  overdriveSteps -= config.overdriveSteps;
+  makeSteps(overdriveSteps);
+  currentAbsPosition = 0;
+  delay(config.holdingTime);
+  Disable();
+  return true;
+};
+
+// Выполнить перемещение в заданную относительную координату.
+//----------------------------------------
+bool Driver::GoToRelPosition(int x) {
+  if (!enabled) Enable();
+  int steps;
+  calcStepsToRelPosition(x, &steps);
+  makeSteps(steps);
+  currentAbsPosition += steps;
+  delay(config.holdingTime);
   Disable();
   return true;
 };

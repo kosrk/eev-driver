@@ -26,6 +26,8 @@ class Driver{
     bool Enable();
     bool Disable();
     bool InitialOverdrive();
+    bool Overdrive();
+    bool GoToRelPosition(int x);
   private:
     driverConfig config;
     int currentAbsPosition,  // положение задвижки в полных шагах, где 0 - полностью закрыто
