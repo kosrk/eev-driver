@@ -1,4 +1,5 @@
 #include <driver.h>
+#include "ModbusRtu.h"
 
 // ПРОВЕРИТЬ НАПРАВЛЕНИЕ ВРАЩЕНИЯ ЗАКРЫТИЯ НА ДРАЙВЕРЕ!
 // Положительное направление вращения - в сторону открытия клапана.
@@ -30,6 +31,20 @@
 //                                628 steps in closing direction recommended for initialisation
 //                                Overdriving in open position not recommended
 
+// Карта Modbus регистров прибора
+//---------------------------------------------------------------------------------------------------------------
+// регистр      | бит | название | тип     | modbus адрес | доступ     | назначение
+// --------------------------------------------------------------------------------------------------------------
+// au16data[0]  | 0   | DT0      | coil    | 0            | read       | 1 - прибор готов, 0 - не готов
+// au16data[1]  | 0   | CL16     | coil    | 16           | read/write | 1 - выполнить перегрузку
+// au16data[1]  | 1   | CL17     | coil    | 17           | read/write | 1 - начать движение к целевой координате
+// au16data[1]  | 2   | CL18     | coil    | 18           | read/write | 1 - выполнить полную перегрузку
+// au16data[2]  |     | INPT3    | input   | 2            | read       | чтение текущего положения задвижки
+// au16data[3]  |     | INPT4    | input   | 3            | read       | чтение кода ошибки
+// au16data[5]  |     | HOLD6    | holding | 5            | read/write | записать целевую координату
+
+// Параметры привода
+//----------------------------------------
 #define ENABLE_PIN           4            // D4 ENABLE pin драйвера
 #define STEP_PIN             3            // D3 STEP pin драйвер
 #define DIR_PIN              2            // D2 DIR pin драйвера
@@ -42,19 +57,34 @@
 #define HIGH_TIME            5            // длительность состояния HIGH для STEP pin в микросекундах
 #define MAX_REL_POSITION     1000         // Положение задвижки задатеся числом 0-X, где 0 - полностью закрыто, X - полностью открыто
 #define HOLDING_TIME         10           // Время (в миллисекундах) до отключения питания обмоток после последнего шага
+
+// Параметры сети
+//----------------------------------------
+#define MODBUS_ADDR          1            // адрес устройства в сети Modbus
+#define MODBUS_TX_CONTROL    0            // номер выхода управления TX
+#define MODBUS_SPEED         9600         // скорость передачи данных по RS-485
+
+// Параметры отладки
+//----------------------------------------
 #define DEBUG                true         // вывод отладочной информации в консоль
 
+// Функция вывода отладочной информации
+//----------------------------------------
 void debugLog(String msg) {
   if (DEBUG) {
     Serial.println(msg);
   }
 }
 
-void setup()
-{
-  if (DEBUG) {
-    Serial.begin(115200);
-  }
+// Глобальные переменные
+//----------------------------------------
+bool initFlag = false;                                  // флаг инициализации устройства
+Modbus modbus(MODBUS_ADDR, Serial, MODBUS_TX_CONTROL);  // ведомое modbus устройство
+uint16_t au16data[11];                                  // массив регистров Modbus
+
+// Инициализация привода
+//----------------------------------------
+bool driverInit(Driver *driver) {
   struct driverConfig config = {      
       ENABLE_PIN,
       STEP_PIN,
@@ -70,14 +100,41 @@ void setup()
       HOLDING_TIME
       };
   if (!ValidateConfig(config)) {
-    debugLog("Invalid config");
-    return;
+    debugLog("Invalid driver config");
+    return false;
+  };     
+  Driver drv(config);  
+  if (!drv.Init()) {
+    debugLog("Driver init failed");
+    return false;
   };
-  Driver driver(config);
-  driver.Init();
-  driver.InitialOverdrive();
-  debugLog("Driver initialization");
+  if (!drv.InitialOverdrive()) {
+    debugLog("Initial overdrive failed");
+    return false;
+  };
+  debugLog("Driver initialization finished"); 
+  *driver = drv;
+  return true;
+};
+
+// Инициализация сети
+//----------------------------------------
+bool modbusInit() {
+  modbus.start();
+  return true;
+};
+
+// Инициализация
+//----------------------------------------
+void setup()
+{
+  if (DEBUG) {
+    Serial.begin(115200);
+  }
+  initFlag = true;
 }
 
+// Основной цикл обработки
+//----------------------------------------
 void loop() {
 }
