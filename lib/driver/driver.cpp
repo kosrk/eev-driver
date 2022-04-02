@@ -123,17 +123,22 @@ bool Driver::InitialOverdrive() {
   return true;
 };
 
-// Выполнить перегрузку при известном положении. Сбросить положение на 0.
+// Выполнить перегрузку при известном положении. Вернуться в исходное положение.
 // Положительное направление вращения - в сторону открытия клапана.
 //----------------------------------------
 bool Driver::Overdrive() {
+  int oldPosition = currentAbsPosition;
   if (!enabled) Enable();
   int overdriveSteps;
   calcStepsToRelPosition(0, &overdriveSteps);
   overdriveSteps -= config.overdriveSteps;
   makeSteps(overdriveSteps);
-  currentAbsPosition = 0;
   delay(config.holdingTime);
+  currentAbsPosition = 0;
+  calcStepsToRelPosition(oldPosition, &overdriveSteps);
+  makeSteps(overdriveSteps);
+  delay(config.holdingTime);
+  currentAbsPosition = oldPosition;
   Disable();
   return true;
 };
