@@ -128,6 +128,7 @@ bool driverInit(Driver *driver) {
 // Инициализация сети
 //----------------------------------------
 bool modbusInit() {
+  Serial.begin(MODBUS_SPEED);
   modbus.start();
   return true;
 };
@@ -178,9 +179,6 @@ bool polling() {
 //----------------------------------------
 void setup()
 {
-  if (DEBUG) {
-    Serial.begin(115200);
-  }
   initFlag = modbusInit() && driverInit(&driver);
   if (initFlag) {
     bitWrite(au16data[0], 0, true); // прибор готов
