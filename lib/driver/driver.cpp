@@ -16,20 +16,20 @@ bool ValidateConfig(driverConfig dConfig) {
 
 // Конструктор класса
 //----------------------------------------
-Driver::Driver(driverConfig dConfig) {
-  config = dConfig;
+Driver::Driver() {
   currentAbsPosition = 0;
   busy = false;
   ready = false;
   enabled = false;
-  // Вычисление паузы между импульсами Step
-  stepTimeout = 1000000 / (config.velocity * config.microsteps) - config.highTime;
-  if (stepTimeout < 10) stepTimeout = 10;
 }
 
 // Инициализация
 //----------------------------------------
-bool Driver::Init() {
+bool Driver::Init(driverConfig dConfig) {
+  config = dConfig;
+    // Вычисление паузы между импульсами Step
+  stepTimeout = 1000000 / (config.velocity * config.microsteps) - config.highTime;
+  if (stepTimeout < 10) stepTimeout = 10;  
   pinMode(config.enablePin, OUTPUT);
   pinMode(config.stepPin, OUTPUT);
   pinMode(config.dirPin, OUTPUT);
@@ -67,6 +67,13 @@ bool Driver::setNotBusy() {
   busy = false;
   digitalWrite(config.busyPin, LOW);
   return true;
+};
+
+// Получить текущую относительную позицию
+//----------------------------------------
+int Driver::GetRelPosition() {
+  int res = (currentAbsPosition * config.maxRelPosition) / (config.totalSteps * config.microsteps);
+  return res;
 };
 
 // Пересчет относительной позиции в абсолютную

@@ -21,13 +21,14 @@ bool ValidateConfig(driverConfig dConfig);
 
 class Driver{
   public:  
-    Driver (driverConfig dConfig);
-    bool Init();
+    Driver ();
+    bool Init(driverConfig dConfig);
     bool Enable();
     bool Disable();
     bool InitialOverdrive();
     bool Overdrive();
     bool GoToRelPosition(int x);
+    int  GetRelPosition();
   private:
     driverConfig config;
     int currentAbsPosition,  // положение задвижки в полных шагах, где 0 - полностью закрыто

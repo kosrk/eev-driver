@@ -43,6 +43,13 @@
 // au16data[3]  |     | INPT4    | input   | 3            | read       | чтение кода ошибки
 // au16data[5]  |     | HOLD6    | holding | 5            | read/write | записать целевую координату
 
+// Коды ошибок (регистр кода ошибок)
+//----------------------------------------
+#define ERR_NO               0            // ошибок нет 
+#define ERR_OVERLOAD         1            // ошибка перегрузки
+#define ERR_GO_TO_POS        2            // ошибка перемещения в целевую координату
+#define ERR_TOTAL_OVERLOAD   3            // ошибка полной перегрузки
+
 // Параметры привода
 //----------------------------------------
 #define ENABLE_PIN           4            // D4 ENABLE pin драйвера
@@ -66,7 +73,7 @@
 
 // Параметры отладки
 //----------------------------------------
-#define DEBUG                true         // вывод отладочной информации в консоль
+#define DEBUG                false        // вывод отладочной информации в консоль
 
 // Функция вывода отладочной информации
 //----------------------------------------
@@ -80,7 +87,8 @@ void debugLog(String msg) {
 //----------------------------------------
 bool initFlag = false;                                  // флаг инициализации устройства
 Modbus modbus(MODBUS_ADDR, Serial, MODBUS_TX_CONTROL);  // ведомое modbus устройство
-uint16_t au16data[11];                                  // массив регистров Modbus
+uint16_t au16data[11] = {0};                            // массив регистров Modbus
+Driver driver;
 
 // Инициализация привода
 //----------------------------------------
@@ -103,8 +111,8 @@ bool driverInit(Driver *driver) {
     debugLog("Invalid driver config");
     return false;
   };     
-  Driver drv(config);  
-  if (!drv.Init()) {
+  Driver drv;  
+  if (!drv.Init(config)) {
     debugLog("Driver init failed");
     return false;
   };
@@ -124,6 +132,48 @@ bool modbusInit() {
   return true;
 };
 
+// Планировщик
+//----------------------------------------
+bool polling() {
+  int8_t state;
+  state = modbus.poll(au16data, 11);
+  if (state <= 4) {                        // state > 4 - получен пакет без ошибок 
+    return false;
+  }
+  if (bitRead(au16data[1],0)) {            // команда выполнить перегрузку
+    if (!driver.Overdrive()) {
+      au16data[3] = ERR_OVERLOAD;
+      bitWrite(au16data[0], 0, false);
+      return false;
+    };
+    au16data[2] = driver.GetRelPosition(); // записать текущую координату
+    bitWrite(au16data[1], 0, false);
+  }
+  if (bitRead(au16data[1],1)) {            // команда выполнить перемещение в целевую координату
+    uint16_t pos;
+    pos = au16data[5];                     // получение целевой координаты из регистра
+    if (!driver.GoToRelPosition(pos)) {
+      au16data[3] = ERR_GO_TO_POS;
+      bitWrite(au16data[0], 0, false);
+      return false;
+    };
+    au16data[2] = driver.GetRelPosition();
+    bitWrite(au16data[1], 1, false);
+  }
+  if (bitRead(au16data[1],2)) {            // команда выполнить полную перегрузку
+    if (!driver.InitialOverdrive()) {
+      au16data[3] = ERR_TOTAL_OVERLOAD;
+      bitWrite(au16data[0], 0, false);
+      return false;
+    };
+    au16data[3] = ERR_NO;
+    bitWrite(au16data[0], 0, true);
+    au16data[2] = driver.GetRelPosition();
+    bitWrite(au16data[1], 2, false);
+  }
+  return true;
+};
+
 // Инициализация
 //----------------------------------------
 void setup()
@@ -131,10 +181,14 @@ void setup()
   if (DEBUG) {
     Serial.begin(115200);
   }
-  initFlag = true;
+  initFlag = modbusInit() && driverInit(&driver);
+  if (initFlag) {
+    bitWrite(au16data[0], 0, true); // прибор готов
+  }
 }
 
 // Основной цикл обработки
 //----------------------------------------
 void loop() {
+  polling();
 }
