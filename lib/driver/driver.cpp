@@ -134,7 +134,7 @@ bool Driver::InitialOverdrive() {
 // Положительное направление вращения - в сторону открытия клапана.
 //----------------------------------------
 bool Driver::Overdrive() {
-  int oldPosition = currentAbsPosition;
+  int oldPosition = GetRelPosition();
   if (!enabled) Enable();
   int overdriveSteps;
   calcStepsToRelPosition(0, &overdriveSteps);
