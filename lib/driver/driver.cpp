@@ -27,7 +27,7 @@ Driver::Driver() {
 //----------------------------------------
 bool Driver::Init(driverConfig dConfig) {
   config = dConfig;
-    // Вычисление паузы между импульсами Step
+  // Вычисление паузы между импульсами Step
   stepTimeout = 1000000 / (config.velocity * config.microsteps) - config.highTime;
   if (stepTimeout < 10) stepTimeout = 10;  
   pinMode(config.enablePin, OUTPUT);
@@ -79,7 +79,7 @@ int Driver::GetRelPosition() {
 // Пересчет относительной позиции в абсолютную
 //----------------------------------------
 bool Driver::convertRelPositionToAbs(int relPosition, int *absPosition) {
-  if (relPosition > config.maxRelPosition) return false;
+  if (relPosition > config.maxRelPosition || relPosition < 0) return false;
   int res = (relPosition * config.totalSteps * config.microsteps) / config.maxRelPosition;
   *absPosition = res;
   return true;
@@ -122,7 +122,10 @@ bool Driver::makeSteps(int steps) {
 bool Driver::InitialOverdrive() {
   if (!enabled) Enable();
   int overdriveSteps = -1 * (config.totalSteps + config.initOverdriveSteps) * config.microsteps; 
-  makeSteps(overdriveSteps);
+  if (!makeSteps(overdriveSteps)) {
+    Disable();
+    return false;
+  };
   currentAbsPosition = 0;
   delay(config.holdingTime);
   Disable();
@@ -137,15 +140,30 @@ bool Driver::Overdrive() {
   int oldPosition = GetRelPosition();
   if (!enabled) Enable();
   int overdriveSteps;
-  calcStepsToRelPosition(0, &overdriveSteps);
+  if (!calcStepsToRelPosition(0, &overdriveSteps)) {
+    return false;
+    Disable();
+  };
   overdriveSteps -= config.overdriveSteps;
-  makeSteps(overdriveSteps);
+  if (!makeSteps(overdriveSteps)) {
+    return false;
+    Disable();
+  };
   delay(config.holdingTime);
   currentAbsPosition = 0;
-  calcStepsToRelPosition(oldPosition, &overdriveSteps);
-  makeSteps(overdriveSteps);
+  if (!calcStepsToRelPosition(oldPosition, &overdriveSteps)) {
+    return false;
+    Disable();
+  };
+  if (!makeSteps(overdriveSteps)) {
+    return false;
+    Disable();
+  };
   delay(config.holdingTime);
-  currentAbsPosition = oldPosition;
+  if (!convertRelPositionToAbs(oldPosition, &currentAbsPosition)) {
+    return false;
+    Disable();
+  };
   Disable();
   return true;
 };
@@ -155,8 +173,14 @@ bool Driver::Overdrive() {
 bool Driver::GoToRelPosition(int x) {
   if (!enabled) Enable();
   int steps;
-  calcStepsToRelPosition(x, &steps);
-  makeSteps(steps);
+  if (!calcStepsToRelPosition(x, &steps)) {
+    return false;
+    Disable();
+  };
+  if (!makeSteps(steps)) {
+    return false;
+    Disable();
+  };
   currentAbsPosition += steps;
   delay(config.holdingTime);
   Disable();
