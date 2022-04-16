@@ -31,16 +31,16 @@ class Driver{
     int  GetRelPosition();
   private:
     driverConfig config;
-    int currentAbsPosition,  // положение задвижки в полных шагах, где 0 - полностью закрыто
+    long currentAbsPosition, // положение задвижки в полных шагах, где 0 - полностью закрыто
     stepTimeout;             // пауза между импульсами Step в мкс
     bool busy,               // сигнализирует, что привод выполняет движение
     ready,                   // сигнализирует, что привод готов начать движение
     enabled;                 // сигнализирует, что подано питание на привод
     bool setBusy();
     bool setNotBusy();
-    bool convertRelPositionToAbs(int relPosition, int *absPosition);
-    bool calcStepsToRelPosition(int targetRelPosition, int *qtyOfSteps);
-    bool makeSteps(int steps);
+    bool convertRelPositionToAbs(int relPosition, long *absPosition);
+    bool calcStepsToRelPosition(int targetRelPosition, long *qtyOfSteps);
+    bool makeSteps(long steps);
 };
 #define DRIVER_H
 #endif

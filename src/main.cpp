@@ -1,54 +1,13 @@
 #include <driver.h>
 #include "ModbusRtu.h"
 
-// ПРОВЕРИТЬ НАПРАВЛЕНИЕ ВРАЩЕНИЯ ЗАКРЫТИЯ НА ДРАЙВЕРЕ!
-// Положительное направление вращения - в сторону открытия клапана.
-
-// Рекомендуемые параметры для ТРВ Danfoss ETS 24C-22 Colibri:
-// -----------------------------------------------------------
-// Stepper motor type:            Bi-polar - permanent magnet
-// Step mode:                     Microstepping (recommended), 2 phase full step or half step
-// Phase current:                 800 mA peak / 600 mA RMS
-// Holding current:               No permanent holding current needed. Max. 20% permanent holding current
-//                                allowed with refrigerant flow through valve
-//                                For optimal performance, driver should keep 100% current on coils 10ms
-//                                after last step.
-// Phase resistance:              10 Ω ±10% at +20 °C / +68 °F
-// Inductance:                    14 mH ±25%
-// Duty cycle:                    100% possible, requiring refrigerant flow through valve
-//                                Less than 50% over 120 sec period recommended
-// Nominal Power consumption:     7.44 W RMS at 20 °C (total, both coils)
-// Total number of full steps:    600
-// Step rate:                     Current control driver:
-//                                a. Step type: Microstep (1⁄4 th or higher): 240 full steps/sec. recommended
-//                                b. Step type: Full step or Half steps: 240 full steps/sec. recommended
-//                                Emergency close : 240 full steps/sec.
-// Step translation:              0.0167 mm / step
-// Full travel time:              2.5 at 240 steps / sec
-// Opening stroke :               10 mm / 0.4 in
-// Reference position :           Overdriving against the full close position
-// Overdriving performance:       1% (6 full steps) Overdrive is recommended for optimum performance
-//                                628 steps in closing direction recommended for initialisation
-//                                Overdriving in open position not recommended
-
-// Карта Modbus регистров прибора
-//---------------------------------------------------------------------------------------------------------------
-// регистр      | бит | название | тип     | modbus адрес | доступ     | назначение
-// --------------------------------------------------------------------------------------------------------------
-// au16data[0]  | 0   | DT0      | coil    | 0            | read       | 1 - прибор готов, 0 - не готов
-// au16data[1]  | 0   | CL16     | coil    | 17           | read/write | 1 - выполнить перегрузку
-// au16data[1]  | 1   | CL17     | coil    | 18           | read/write | 1 - начать движение к целевой координате
-// au16data[1]  | 2   | CL18     | coil    | 19           | read/write | 1 - выполнить полную перегрузку
-// au16data[2]  |     | INPT3    | input   | 2            | read       | чтение текущего положения задвижки
-// au16data[3]  |     | INPT4    | input   | 3            | read       | чтение кода ошибки
-// au16data[5]  |     | HOLD6    | holding | 5            | read/write | записать целевую координату
-
 // Коды ошибок (регистр кодов ошибок)
 //----------------------------------------
 #define ERR_NO               0            // ошибок нет 
 #define ERR_OVERLOAD         1            // ошибка перегрузки
 #define ERR_GO_TO_POS        2            // ошибка перемещения в целевую координату
 #define ERR_TOTAL_OVERLOAD   3            // ошибка полной перегрузки
+#define ERR_INIT             4            // ошибка инициализации
 
 // Параметры привода
 //----------------------------------------
@@ -170,6 +129,7 @@ bool polling() {
     au16data[3] = ERR_NO;
     bitWrite(au16data[0], 0, true);
     au16data[2] = driver.GetRelPosition();
+    au16data[5] = au16data[2];            // выставляем целевую координату в ноль для безопасности                      
     bitWrite(au16data[1], 2, false);
   }
   return true;
@@ -182,6 +142,8 @@ void setup()
   initFlag = modbusInit() && driverInit(&driver);
   if (initFlag) {
     bitWrite(au16data[0], 0, true); // прибор готов
+  } else {
+    au16data[3] = ERR_INIT;
   }
 }
 
