@@ -11,12 +11,12 @@
 
 // Параметры привода
 //----------------------------------------
-#define ENABLE_PIN           4            // D4 ENABLE pin драйвера
-#define STEP_PIN             3            // D3 STEP pin драйвер
-#define DIR_PIN              2            // D2 DIR pin драйвера
-#define BUSY_PIN             LED_BUILTIN  // встроенный светодиод для тестов
+#define ENABLE_PIN           4            // D4 -> ENABLE pin драйвера
+#define STEP_PIN             3            // D3 -> STEP pin драйвер
+#define DIR_PIN              2            // D2 -> DIR pin драйвера
+#define BUSY_PIN             9            // D9 или встроенный светодиод для тестов
 #define VELOCITY             240          // скорость в полных шагах в секунду
-#define MICROSTEPS           32           // делитель микрошага, установленный на драйвере
+#define MICROSTEPS           64           // делитель микрошага, установленный на драйвере
 #define TOTAL_STEPS          600          // полное рабочее число шагов БЕЗ учета микрошага
 #define OVERDRIVE_STEPS      6            // запас полных шагов перегрузки
 #define INIT_OVERDRIVE_STEPS 28           // запас полных шагов перегрузки для первичной инициализации
@@ -27,7 +27,7 @@
 // Параметры сети
 //----------------------------------------
 #define MODBUS_ADDR          1            // адрес устройства в сети Modbus
-#define MODBUS_TX_CONTROL    0            // номер выхода управления TX
+#define MODBUS_TX_CONTROL    10           // номер выхода управления TX
 #define MODBUS_SPEED         9600         // скорость передачи данных по RS-485
 
 // Параметры отладки
