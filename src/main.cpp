@@ -11,9 +11,9 @@
 
 // Параметры привода
 //----------------------------------------
-#define ENABLE_PIN           4            // D4 -> ENABLE pin драйвера
-#define STEP_PIN             3            // D3 -> STEP pin драйвер
-#define DIR_PIN              2            // D2 -> DIR pin драйвера
+#define ENABLE_PIN           4            // D4 ENABLE pin драйвера
+#define STEP_PIN             3            // D3 STEP pin драйвер
+#define DIR_PIN              2            // D2 DIR pin драйвера
 #define BUSY_PIN             9            // D9 или встроенный светодиод для тестов
 #define VELOCITY             240          // скорость в полных шагах в секунду
 #define MICROSTEPS           64           // делитель микрошага, установленный на драйвере
@@ -28,7 +28,7 @@
 //----------------------------------------
 #define MODBUS_ADDR          1            // адрес устройства в сети Modbus
 #define MODBUS_TX_CONTROL    10           // номер выхода управления TX
-#define MODBUS_SPEED         9600         // скорость передачи данных по RS-485
+#define MODBUS_SPEED         115200       // скорость передачи данных по RS-485
 
 // Параметры отладки
 //----------------------------------------
@@ -116,7 +116,7 @@ bool polling() {
       au16data[3] = ERR_GO_TO_POS;
       bitWrite(au16data[0], 0, false);
       return false;
-    };
+    };    
     au16data[2] = driver.GetRelPosition();
     bitWrite(au16data[1], 1, false);
   }
